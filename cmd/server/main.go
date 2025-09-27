@@ -45,6 +45,8 @@ func main() {
     log.Println("  GET  /api/v1/satellite/{id}/orbit")
     log.Println("  POST /api/v1/satellite/{id}/maneuver")
     log.Println("  GET  /api/v1/mission/debris/{id}/threats")
+    log.Println("  GET  /api/v1/mission/debris/list")
+    log.Println("  GET  /api/v1/mission/debris/stats")
     
     if err := r.Run(":" + cfg.Port); err != nil {
         log.Fatal("❌ Failed to start server:", err)

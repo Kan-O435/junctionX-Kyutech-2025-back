@@ -3,6 +3,8 @@ package routes
 import (
     "junctionx2025back/internal/api/handlers/satellite"
     satelliteVideoHandlers "junctionx2025back/internal/api/handlers/satellite/video"
+    "junctionx2025back/internal/services"
+    "junctionx2025back/internal/models/mission"
     "github.com/gin-gonic/gin"
 )
 
@@ -121,28 +123,54 @@ func SetupRoutes(r *gin.Engine) {
             disasterGroup.GET("/:id/video", satelliteVideoHandlers.GetDisasterVideo)
         }
         
-        // デブリ脅威取得（既存）
+        // デブリ脅威取得（修正版）
         v1.GET("/mission/debris/:id/threats", func(c *gin.Context) {
             missionID := c.Param("id")
+            
+            // デブリサービスを使用してデータを生成
+            debrisService := services.NewDebrisService()
+            threats := debrisService.GenerateDebrisThreats(missionID)
+            
+            // レスポンス用に変換
+            threatResponses := make([]mission.DebrisThreatResponse, len(threats))
+            for i, threat := range threats {
+                threatResponses[i] = threat.ToResponse()
+            }
+            
             c.JSON(200, gin.H{
                 "mission_id": missionID,
-                "threats": []gin.H{
-                    {
-                        "id": "debris_001",
-                        "name": "Rocket Fragment",
-                        "distance": 2.5,
-                        "time_to_impact": 300,
-                        "danger_level": 7,
-                    },
-                    {
-                        "id": "debris_002", 
-                        "name": "Satellite Fragment",
-                        "distance": 8.1,
-                        "time_to_impact": 450,
-                        "danger_level": 4,
-                    },
-                },
-                "message": "Sample debris threats",
+                "threats": threatResponses,
+                "message": "Debris threats with ECI coordinates",
+            })
+        })
+        
+        // デブリリスト取得
+        v1.GET("/mission/debris/list", func(c *gin.Context) {
+            debrisService := services.NewDebrisService()
+            threats := debrisService.GenerateDebrisThreats("global")
+            
+            // レスポンス用に変換
+            threatResponses := make([]mission.DebrisThreatResponse, len(threats))
+            for i, threat := range threats {
+                threatResponses[i] = threat.ToResponse()
+            }
+            
+            c.JSON(200, gin.H{
+                "debris_list": threatResponses,
+                "total_count": len(threatResponses),
+                "message": "Global debris list",
+            })
+        })
+        
+        // デブリ統計情報取得
+        v1.GET("/mission/debris/stats", func(c *gin.Context) {
+            debrisService := services.NewDebrisService()
+            threats := debrisService.GenerateDebrisThreats("global")
+            stats := debrisService.GetDebrisStats(threats)
+            
+            c.JSON(200, gin.H{
+                "stats": stats,
+                "message": "Debris statistics",
             })
         })
         

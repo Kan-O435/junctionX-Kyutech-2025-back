@@ -39,6 +39,40 @@ type DebrisThreat struct {
     DetectedAt          time.Time       `json:"detected_at"`
 }
 
+// JSON変換用のカスタム構造体
+type DebrisThreatResponse struct {
+    ID                  string          `json:"id"`
+    NoradID             string          `json:"norad_id"`
+    Name                string          `json:"name"`
+    Position            common.Vector3D `json:"position"`
+    Velocity            common.Vector3D `json:"velocity"`
+    Size                float64         `json:"size"`
+    Mass                float64         `json:"mass"`
+    DangerLevel         int             `json:"danger_level"`
+    TimeToClosest       int64           `json:"time_to_closest"`       // ミリ秒
+    ClosestDistance     float64         `json:"closest_distance"`
+    CollisionProbability float64        `json:"collision_probability"`
+    DetectedAt          string          `json:"detected_at"`           // ISO8601文字列
+}
+
+// DebrisThreatをDebrisThreatResponseに変換
+func (dt *DebrisThreat) ToResponse() DebrisThreatResponse {
+    return DebrisThreatResponse{
+        ID:                  dt.ID,
+        NoradID:            dt.NoradID,
+        Name:               dt.Name,
+        Position:           dt.Position,
+        Velocity:           dt.Velocity,
+        Size:               dt.Size,
+        Mass:               dt.Mass,
+        DangerLevel:        dt.DangerLevel,
+        TimeToClosest:      dt.TimeToClosest.Milliseconds(),
+        ClosestDistance:    dt.ClosestDistance,
+        CollisionProbability: dt.CollisionProbability,
+        DetectedAt:         dt.DetectedAt.Format(time.RFC3339),
+    }
+}
+
 type AvoidanceAction struct {
     ID              string          `json:"id"`
     ThreatID        string          `json:"threat_id"`
