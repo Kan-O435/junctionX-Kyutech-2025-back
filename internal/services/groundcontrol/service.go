@@ -111,8 +111,8 @@ func (gcs *GroundControlService) ProcessFieldMessage(missionID, userMessage stri
         m.Priority = "PRIORITY ALPHA - CRITICAL"
     }
     
-    // Generate response
-    prompt := fmt.Sprintf(`%s
+    // Generate response - FIXED: Changed prompt to responsePrompt
+    responsePrompt := fmt.Sprintf(`%s
 
 【Current Mission】
 - Call Sign: %s
@@ -143,7 +143,7 @@ Respond as Ground Control with specific instructions and military precision.`,
     )
     
     // Use CallAPI method (correct method name)
-    response := gcs.geminiService.CallAPI(prompt)
+    response := gcs.geminiService.CallAPI(responsePrompt)
     if response == "" {
         response = "Ground Control to Field Team. Communication system experiencing interference. Switching to backup channel. Standby. Over."
         log.Printf("❌ Gemini API Error: Empty response")
@@ -223,7 +223,8 @@ func (gcs *GroundControlService) getCurrentShift() string {
 }
 
 func (gcs *GroundControlService) generateInitialBriefing(m *mission.Mission) mission.ChatMessage {
-    prompt := fmt.Sprintf(`%s
+    // FIXED: Changed prompt to responsePrompt
+    responsePrompt := fmt.Sprintf(`%s
 
 【Mission Initialization】
 - Call Sign: %s
@@ -248,7 +249,7 @@ Generate initial mission briefing with military precision and radio protocol.`,
     )
     
     // Use CallAPI method (correct method name)
-    response := gcs.geminiService.CallAPI(prompt)
+    response := gcs.geminiService.CallAPI(responsePrompt)
     if response == "" {
         response = fmt.Sprintf(
             "Ground Control to %s. This is %s at %s. Mission initiated for %s event at %s. Severity level: %s. %s. Standing by for field reports. How copy? Over.",
