@@ -84,7 +84,7 @@ func (gs *GeminiService) CallAPI(prompt string) string {
             Temperature:     0.7,
             TopK:           30,
             TopP:           0.7,
-            MaxOutputTokens: 600,
+            MaxOutputTokens: 750,
         },
         SafetySettings: []SafetySetting{
             {Category: "HARM_CATEGORY_HARASSMENT", Threshold: "BLOCK_MEDIUM_AND_ABOVE"},
