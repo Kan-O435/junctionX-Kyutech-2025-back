@@ -28,6 +28,7 @@ type FireData struct {
 	AcqDate    string  `json:"acq_date"`   // 観測日（UTC）
 	AcqTime    string  `json:"acq_time"`   // 観測時刻（UTC、HHMM形式）
 	Satellite  string  `json:"satellite"`  // 観測衛星（例: A = Aqua, T = Terra）
+	Instrument string  `json:"instrument"` // 観測機器
 	Confidence int     `json:"confidence"` // 検出の信頼度（0〜100、数値が高いほど確実な火災）
 	Version    string  `json:"version"`    // FIRMS データセットのバージョン
 	FRP        float64 `json:"frp"`        // Fire Radiative Power (火災放射強度、MW単位)
@@ -366,7 +367,7 @@ func parseCSVResponse(body io.Reader) ([]FireData, error) {
 
 // API 応答の CSV を FireData 構造体のスライスに変換する関数
 func parseFireRecord(record []string) (FireData, error) {
-	if len(record) < 13 {
+	if len(record) < 14 {
 		return FireData{}, fmt.Errorf("incomplete record: %v", record)
 	}
 
@@ -375,8 +376,8 @@ func parseFireRecord(record []string) (FireData, error) {
 	brightness, _ := strconv.ParseFloat(record[2], 64)
 	scan, _ := strconv.ParseFloat(record[3], 64)
 	track, _ := strconv.ParseFloat(record[4], 64)
-	confidence, _ := strconv.Atoi(record[8])
-	frp, _ := strconv.ParseFloat(record[10], 64)
+	confidence, _ := strconv.Atoi(record[9])
+	frp, _ := strconv.ParseFloat(record[12], 64)
 
 	return FireData{
 		Latitude:   latitude,
@@ -387,9 +388,10 @@ func parseFireRecord(record []string) (FireData, error) {
 		AcqDate:    record[5],
 		AcqTime:    record[6],
 		Satellite:  record[7],
+		Instrument: record[8],
 		Confidence: confidence,
-		Version:    record[9],
+		Version:    record[10],
 		FRP:        frp,
-		DayNight:   record[11],
+		DayNight:   record[13],
 	}, nil
 }
