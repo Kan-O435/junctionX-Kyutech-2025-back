@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN go mod download
 COPY . .
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/server
 
 # Production stage
 FROM alpine:latest
@@ -20,6 +20,6 @@ WORKDIR /root/
 
 COPY --from=builder /app/main .
 
-EXPOSE $PORT
+EXPOSE 8080
 
 CMD ["./main"]

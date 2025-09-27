@@ -51,36 +51,3 @@ type Maneuver struct {
     Status       string          `json:"status"`         // "planned", "executing", "completed", "failed"
     FuelConsumed float64         `json:"fuel_consumed"`  // 消費燃料(kg)
 }
-// Video関連の構造体を追加
-type VideoRequest struct {
-    SatelliteID string  `json:"satellite_id"`
-    Duration    int     `json:"duration"`
-    Resolution  string  `json:"resolution"`
-    Target      Target  `json:"target"`
-}
-
-type VideoResponse struct {
-    RequestID   string `json:"request_id"`
-    Status      string `json:"status"`
-    VideoURL    string `json:"video_url"`
-    Timestamp   string `json:"timestamp"`
-    Duration    int    `json:"duration"`
-}
-
-type Target struct {
-    Latitude  float64 `json:"latitude"`
-    Longitude float64 `json:"longitude"`
-    Radius    float64 `json:"radius"`
-}
-
-type SatelliteInfo struct {
-    ID          string  `json:"id"`
-    Name        string  `json:"name"`
-    Status      string  `json:"status"`
-    Latitude    float64 `json:"latitude"`
-    Longitude   float64 `json:"longitude"`
-    Altitude    float64 `json:"altitude"`
-    Velocity    float64 `json:"velocity"`
-    BatteryLevel float64 `json:"battery_level"`
-    LastUpdate  string  `json:"last_update"`
-}

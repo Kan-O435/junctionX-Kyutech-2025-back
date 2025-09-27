@@ -1,0 +1,29 @@
+# VCS
+.git
+.gitignore
+
+# Node / Frontend caches (just in case)
+node_modules
+npm-debug.log
+
+# Local builds/binaries
+main
+*.out
+*.log
+
+# Go build cache
+/go/pkg/mod
+/go/bin
+/.cache
+
+# Editor/OS
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+
+# Large vendor Go toolchain directory included in repo
+go/
+go1.*.tar.gz
+
