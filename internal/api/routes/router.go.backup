@@ -1,0 +1,634 @@
+package routes
+
+import (
+    "os"
+    
+    "junctionx2025back/internal/api/handlers/satellite"
+    satelliteVideoHandlers "junctionx2025back/internal/api/handlers/satellite/video"
+    missionHandlers "junctionx2025back/internal/api/handlers/mission"
+    missionServices "junctionx2025back/internal/services/groundcontrol"
+    "github.com/gin-gonic/gin"
+)
+
+func SetupRoutes(r *gin.Engine) {
+    // Health check
+    r.GET("/health", func(c *gin.Context) {
+        c.JSON(200, gin.H{
+            "status": "ok",
+            "message": "Satellite Game Backend with Ground Control System is running!",
+        })
+    })
+    
+    // ===== Gemini Ground Control System初期化 =====
+    var missionHandler *missionHandlers.MissionHandler
+    apiKey := os.Getenv("GEMINI_API_KEY")
+    if apiKey != "" {
+        groundControl := missionServices.NewGroundControlService(apiKey)
+        missionHandler = missionHandlers.NewMissionHandler(groundControl)
+    }
+    
+    // API v1 group
+    v1 := r.Group("/api/v1")
+    {
+        // ===== 衛星関連（既存 + 映像機能） =====
+        satelliteGroup := v1.Group("/satellite")
+        {
+            // 既存の衛星制御機能
+            satelliteGroup.GET("/:id/orbit", satellite.GetOrbit)
+            satelliteGroup.POST("/:id/maneuver", satellite.ExecuteManeuver)
+            satelliteGroup.GET("/:id/status", satellite.GetStatus)
+            
+            // ===== 衛星映像機能 =====
+            
+            // 利用可能な衛星一覧
+            satelliteGroup.GET("/available", satelliteVideoHandlers.GetAvailableSatellites)
+            
+            // リアルタイム映像取得
+            satelliteGroup.GET("/video/realtime", satelliteVideoHandlers.GetRealtimeVideo)
+            
+            // 映像履歴取得
+            satelliteGroup.GET("/video/history", satelliteVideoHandlers.GetVideoHistory)
+            
+            // 複数衛星同時観測
+            satelliteGroup.POST("/video/multi-view", satelliteVideoHandlers.GetMultiSatelliteView)
+            
+            // ライブストリーミング開始
+            satelliteGroup.POST("/video/stream/start", satelliteVideoHandlers.StartLiveStream)
+            
+            // ライブストリーミング停止
+            satelliteGroup.POST("/video/stream/stop", satelliteVideoHandlers.StopLiveStream)
+            
+            // 特定衛星の詳細情報
+            satelliteGroup.GET("/:id/info", satelliteVideoHandlers.GetSatelliteInfo)
+            
+            // 衛星の現在位置と視野範囲
+            satelliteGroup.GET("/:id/coverage", satelliteVideoHandlers.GetSatelliteCoverage)
+            
+            // 指定地点の観測可能衛星一覧
+            satelliteGroup.GET("/coverage/location", satelliteVideoHandlers.GetLocationCoverage)
+        }
+        
+        // ===== 自然災害監視機能 =====
+        disasterGroup := v1.Group("/disaster")
+        {
+            // アクティブな災害一覧
+            disasterGroup.GET("/active", func(c *gin.Context) {
+                c.JSON(200, gin.H{
+                    "disasters": []gin.H{
+                        {
+                            "id": "earthquake_001",
+                            "type": "earthquake",
+                            "title": "Major Earthquake in California",
+                            "magnitude": 7.3,
+                            "location": gin.H{
+                                "latitude": 34.0522,
+                                "longitude": -118.2437,
+                                "country": "USA",
+                                "region": "Los Angeles, California",
+                            },
+                            "severity": "critical",
+                            "status": "active",
+                            "time": "2025-09-27T15:42:00Z",
+                            "source": "USGS",
+                        },
+                        {
+                            "id": "wildfire_001", 
+                            "type": "wildfire",
+                            "title": "Forest Fire in Northern California",
+                            "magnitude": 4.2,
+                            "location": gin.H{
+                                "latitude": 38.7783,
+                                "longitude": -122.4177,
+                                "country": "USA",
+                                "region": "Napa Valley, California",
+                            },
+                            "severity": "high",
+                            "status": "active",
+                            "time": "2025-09-27T14:30:00Z",
+                            "source": "NASA FIRMS",
+                        },
+                        {
+                            "id": "tsunami_001",
+                            "type": "tsunami",
+                            "title": "Tsunami Warning - Pacific Coast",
+                            "magnitude": 8.1,
+                            "location": gin.H{
+                                "latitude": 38.322,
+                                "longitude": 142.369,
+                                "country": "Japan",
+                                "region": "Tohoku, Japan",
+                            },
+                            "severity": "extreme",
+                            "status": "active",
+                            "time": "2025-09-27T16:15:00Z",
+                            "source": "JMA",
+                        },
+                    },
+                    "total": 3,
+                    "message": "Active disasters detected - Ground Control missions available",
+                    "last_updated": "2025-09-27T16:20:00Z",
+                })
+            })
+            
+            // 災害詳細情報
+            disasterGroup.GET("/:id", func(c *gin.Context) {
+                disasterID := c.Param("id")
+                c.JSON(200, gin.H{
+                    "disaster_id": disasterID,
+                    "type": "earthquake",
+                    "title": "Major Earthquake in California",
+                    "magnitude": 7.3,
+                    "location": gin.H{
+                        "latitude": 34.0522,
+                        "longitude": -118.2437,
+                        "depth": 15.0,
+                        "country": "USA",
+                        "region": "Los Angeles, California",
+                    },
+                    "severity": "critical",
+                    "status": "active",
+                    "time": "2025-09-27T15:42:00Z",
+                    "source": "USGS",
+                    "satellite_observations": []gin.H{
+                        {
+                            "satellite_id": "landsat8",
+                            "satellite_name": "Landsat 8",
+                            "image_url": "/api/v1/satellite/landsat8/disaster/" + disasterID,
+                            "thumbnail_url": "/api/v1/satellite/landsat8/disaster/" + disasterID + "/thumb",
+                            "capture_time": "2025-09-27T15:45:00Z",
+                            "resolution": 30.0,
+                            "quality": 0.95,
+                            "band_type": "visible",
+                        },
+                        {
+                            "satellite_id": "goes16",
+                            "satellite_name": "GOES-16",
+                            "image_url": "/api/v1/satellite/goes16/disaster/" + disasterID,
+                            "thumbnail_url": "/api/v1/satellite/goes16/disaster/" + disasterID + "/thumb",
+                            "capture_time": "2025-09-27T15:50:00Z",
+                            "resolution": 500.0,
+                            "quality": 0.92,
+                            "band_type": "infrared",
+                        },
+                    },
+                    "estimated_impact": gin.H{
+                        "population_at_risk": 12000000,
+                        "economic_impact": 50000000000,
+                        "affected_area_km2": 15000,
+                    },
+                    "mission_available": true,
+                    "message": "Disaster details with satellite imagery and mission data",
+                })
+            })
+            
+            // 災害地域のリアルタイム衛星映像
+            disasterGroup.GET("/:id/video", satelliteVideoHandlers.GetDisasterVideo)
+            
+            // 🆕 災害から自動ミッション作成
+            disasterGroup.POST("/:id/create-mission", func(c *gin.Context) {
+                if missionHandler == nil {
+                    c.JSON(503, gin.H{
+                        "error": "Ground Control System not available",
+                        "message": "GEMINI_API_KEY not configured",
+                    })
+                    return
+                }
+                
+                disasterID := c.Param("id")
+                
+                // サンプル災害データ（実際は災害IDから取得）
+                disaster := gin.H{
+                    "id": disasterID,
+                    "type": "earthquake",
+                    "title": "Major Earthquake in California",
+                    "magnitude": 7.3,
+                    "latitude": 34.0522,
+                    "longitude": -118.2437,
+                    "location": "Los Angeles, California",
+                    "severity": "critical",
+                    "time": "2025-09-27T15:42:00Z",
+                    "source": "USGS",
+                }
+                
+                // Forward to mission creation
+                c.JSON(200, gin.H{
+                    "message": "Mission creation initiated",
+                    "disaster": disaster,
+                    "redirect_to": "/api/v1/missions/create",
+                })
+            })
+        }
+        
+        // ===== 🆕 Gemini Ground Control ミッション管制システム =====
+        if missionHandler != nil {
+            missionGroup := v1.Group("/missions")
+            {
+                // ミッション一覧
+                missionGroup.GET("/", missionHandler.GetMissions)
+                
+                // 災害からミッション作成
+                missionGroup.POST("/create", missionHandler.CreateMission)
+                
+                // 特定ミッション詳細
+                missionGroup.GET("/:id", missionHandler.GetMission)
+                
+                // フィールドメッセージ送信
+                missionGroup.POST("/:id/message", missionHandler.SendMessage)
+                
+                // ミッション状態更新
+                missionGroup.PUT("/:id/status", func(c *gin.Context) {
+                    missionID := c.Param("id")
+                    
+                    var request struct {
+                        Status string `json:"status" binding:"required"`
+                    }
+                    
+                    if err := c.ShouldBindJSON(&request); err != nil {
+                        c.JSON(400, gin.H{"error": "Status is required"})
+                        return
+                    }
+                    
+                    c.JSON(200, gin.H{
+                        "mission_id": missionID,
+                        "status": request.Status,
+                        "updated_at": "2025-09-27T16:30:00Z",
+                        "message": "Mission status updated successfully",
+                    })
+                })
+                
+                // ミッション完了
+                missionGroup.POST("/:id/complete", func(c *gin.Context) {
+                    missionID := c.Param("id")
+                    
+                    var request struct {
+                        Report   string `json:"report"`
+                        Images   []string `json:"images"`
+                        Rating   int    `json:"rating"`
+                    }
+                    
+                    c.ShouldBindJSON(&request)
+                    
+                    c.JSON(200, gin.H{
+                        "mission_id": missionID,
+                        "status": "COMPLETED",
+                        "completion_time": "2025-09-27T16:35:00Z",
+                        "final_report": request.Report,
+                        "images_submitted": len(request.Images),
+                        "mission_rating": request.Rating,
+                        "rewards": gin.H{
+                            "points": 1500,
+                            "badges": []string{"Disaster Response", "Photo Documentation"},
+                            "experience": 250,
+                        },
+                        "message": "Mission completed successfully. Well done, Field Team!",
+                    })
+                })
+            }
+            
+            // 🆕 WebSocket - ミッションチャット
+            v1.GET("/ws/missions/:id", missionHandler.WebSocketChat)
+        } else {
+            // Ground Control System not available
+            v1.GET("/missions/*any", func(c *gin.Context) {
+                c.JSON(503, gin.H{
+                    "error": "Ground Control System not available",
+                    "message": "Please set GEMINI_API_KEY environment variable to enable mission control features",
+                    "available_endpoints": []string{
+                        "/api/v1/satellite/*",
+                        "/api/v1/disaster/*",
+                    },
+                })
+            })
+        }
+        
+        // ===== デブリ脅威取得（既存） =====
+        v1.GET("/mission/debris/:id/threats", func(c *gin.Context) {
+            missionID := c.Param("id")
+            c.JSON(200, gin.H{
+                "mission_id": missionID,
+                "threats": []gin.H{
+                    {
+                        "id": "debris_001",
+                        "name": "Rocket Fragment",
+                        "distance": 2.5,
+                        "time_to_impact": 300,
+                        "danger_level": 7,
+                        "velocity": gin.H{
+                            "x": 7500.0,
+                            "y": 1200.0,
+                            "z": -800.0,
+                        },
+                        "size": "Large",
+                        "threat_type": "Collision",
+                    },
+                    {
+                        "id": "debris_002", 
+                        "name": "Satellite Fragment",
+                        "distance": 8.1,
+                        "time_to_impact": 450,
+                        "danger_level": 4,
+                        "velocity": gin.H{
+                            "x": 6800.0,
+                            "y": -900.0,
+                            "z": 400.0,
+                        },
+                        "size": "Medium",
+                        "threat_type": "Near Miss",
+                    },
+                },
+                "total_threats": 2,
+                "highest_danger_level": 7,
+                "next_update": "2025-09-27T16:45:00Z",
+                "message": "Active debris threats detected",
+            })
+        })
+        
+        // ===== WebSocketエンドポイント =====
+        
+        // リアルタイム災害通知用WebSocket
+        v1.GET("/ws/disaster", func(c *gin.Context) {
+            c.JSON(200, gin.H{
+                "message": "WebSocket endpoint for disaster notifications",
+                "endpoint": "ws://localhost:8080/api/v1/ws/disaster",
+                "supported_events": []string{
+                    "disaster_detected",
+                    "disaster_updated", 
+                    "disaster_resolved",
+                    "mission_available",
+                },
+            })
+        })
+        
+        // リアルタイム衛星映像ストリーミング用WebSocket
+        v1.GET("/ws/satellite/stream", func(c *gin.Context) {
+            c.JSON(200, gin.H{
+                "message": "WebSocket endpoint for satellite video streaming",
+                "endpoint": "ws://localhost:8080/api/v1/ws/satellite/stream",
+                "supported_formats": []string{"mp4", "webm", "hls"},
+                "max_concurrent_streams": 10,
+            })
+        })
+        
+        // ===== ファイル配信エンドポイント =====
+        
+        // 衛星画像ファイル配信
+        v1.Static("/files/satellite", "./data/satellite_images")
+        
+        // 災害画像ファイル配信  
+        v1.Static("/files/disaster", "./data/disaster_images")
+        
+        // サムネイル画像配信
+        v1.Static("/files/thumbnails", "./data/thumbnails")
+        
+        // ミッション関連ファイル配信
+        v1.Static("/files/missions", "./data/mission_files")
+    }
+    
+    // ===== 管理者用エンドポイント =====
+    adminGroup := r.Group("/admin")
+    {
+        // システム全体のステータス
+        adminGroup.GET("/status", func(c *gin.Context) {
+            geminiStatus := "disabled"
+            if apiKey != "" {
+                geminiStatus = "enabled"
+            }
+            
+            c.JSON(200, gin.H{
+                "system_status": "operational",
+                "components": gin.H{
+                    "satellite_control": "operational",
+                    "video_streaming": "operational", 
+                    "disaster_monitoring": "operational",
+                    "ground_control": geminiStatus,
+                    "websocket_services": "operational",
+                },
+                "uptime": "99.9%",
+                "last_restart": "2025-09-27T08:00:00Z",
+                "version": "v2.1.0",
+                "environment": "production",
+            })
+        })
+        
+        // 衛星ステータス一覧
+        adminGroup.GET("/satellites", func(c *gin.Context) {
+            c.JSON(200, gin.H{
+                "satellites": []gin.H{
+                    {
+                        "id": "himawari8",
+                        "name": "Himawari-8",
+                        "type": "Geostationary Weather",
+                        "status": "operational",
+                        "last_contact": "2025-09-27T16:20:00Z",
+                        "data_quality": 0.95,
+                        "orbit_altitude": 35786,
+                        "coverage": "Asia-Pacific",
+                        "resolution": 1000.0,
+                    },
+                    {
+                        "id": "goes16",
+                        "name": "GOES-16", 
+                        "type": "Geostationary Weather",
+                        "status": "operational",
+                        "last_contact": "2025-09-27T16:18:00Z",
+                        "data_quality": 0.92,
+                        "orbit_altitude": 35786,
+                        "coverage": "Americas",
+                        "resolution": 500.0,
+                    },
+                    {
+                        "id": "landsat8",
+                        "name": "Landsat 8",
+                        "type": "Earth Observation",
+                        "status": "operational",
+                        "last_contact": "2025-09-27T16:15:00Z",
+                        "data_quality": 0.98,
+                        "orbit_altitude": 705,
+                        "coverage": "Global",
+                        "resolution": 30.0,
+                    },
+                    {
+                        "id": "terra",
+                        "name": "Terra",
+                        "type": "Earth Observation", 
+                        "status": "maintenance",
+                        "last_contact": "2025-09-27T14:30:00Z",
+                        "data_quality": 0.85,
+                        "orbit_altitude": 705,
+                        "coverage": "Global",
+                        "resolution": 250.0,
+                    },
+                },
+                "total": 4,
+                "operational": 3,
+                "maintenance": 1,
+                "offline": 0,
+            })
+        })
+        
+        // システム統計
+        adminGroup.GET("/stats", func(c *gin.Context) {
+            missionCount := 0
+            if missionHandler != nil {
+                // Get actual mission count if available
+                missionCount = 5 // サンプル値
+            }
+            
+            c.JSON(200, gin.H{
+                "api_requests": gin.H{
+                    "total_today": 1245,
+                    "current_hour": 87,
+                    "peak_hour": 156,
+                    "average_response_time": "45ms",
+                },
+                "system_resources": gin.H{
+                    "cpu_usage": "34%",
+                    "memory_usage": "67%",
+                    "disk_usage": "23%",
+                    "network_throughput": "2.3 MB/s",
+                },
+                "services": gin.H{
+                    "active_video_streams": 3,
+                    "websocket_connections": 12,
+                    "active_missions": missionCount,
+                    "disaster_alerts": 3,
+                },
+                "satellite_health": gin.H{
+                    "operational": 3,
+                    "maintenance": 1,
+                    "offline": 0,
+                    "data_quality_avg": 0.925,
+                },
+                "ground_control": gin.H{
+                    "status": func() string {
+                        if apiKey != "" {
+                            return "operational"
+                        }
+                        return "disabled"
+                    }(),
+                    "active_missions": missionCount,
+                    "total_messages": 45,
+                    "avg_response_time": "1.2s",
+                },
+                "uptime": "99.9%",
+                "last_updated": "2025-09-27T16:30:00Z",
+            })
+        })
+        
+        // ログ管理
+        adminGroup.GET("/logs", func(c *gin.Context) {
+            logLevel := c.DefaultQuery("level", "info")
+            limit := c.DefaultQuery("limit", "100")
+            
+            c.JSON(200, gin.H{
+                "logs": []gin.H{
+                    {
+                        "timestamp": "2025-09-27T16:30:15Z",
+                        "level": "info",
+                        "service": "ground_control",
+                        "message": "Mission SEISMIC-42 created successfully",
+                        "mission_id": "MISSION_1727454615",
+                    },
+                    {
+                        "timestamp": "2025-09-27T16:29:30Z",
+                        "level": "info", 
+                        "service": "disaster_monitor",
+                        "message": "New earthquake detected: M7.3 Los Angeles",
+                        "disaster_id": "earthquake_001",
+                    },
+                    {
+                        "timestamp": "2025-09-27T16:28:45Z",
+                        "level": "warning",
+                        "service": "satellite_video",
+                        "message": "High cloud coverage detected for Landsat 8",
+                        "satellite_id": "landsat8",
+                    },
+                },
+                "filters": gin.H{
+                    "level": logLevel,
+                    "limit": limit,
+                },
+                "total_logs": 1247,
+            })
+        })
+        
+        // 設定管理
+        adminGroup.GET("/config", func(c *gin.Context) {
+            c.JSON(200, gin.H{
+                "configuration": gin.H{
+                    "disaster_detection": gin.H{
+                        "update_interval": "30s",
+                        "min_earthquake_magnitude": 5.5,
+                        "min_fire_brightness": 350.0,
+                        "auto_mission_creation": true,
+                    },
+                    "satellite_monitoring": gin.H{
+                        "max_concurrent_streams": 10,
+                        "default_resolution": 1000.0,
+                        "cache_duration": "1h",
+                        "auto_quality_adjustment": true,
+                    },
+                    "ground_control": gin.H{
+                        "gemini_model": "gemini-pro",
+                        "max_response_tokens": 800,
+                        "temperature": 0.8,
+                        "auto_briefing": true,
+                    },
+                    "websocket": gin.H{
+                        "max_connections": 100,
+                        "heartbeat_interval": "30s",
+                        "message_queue_size": 1000,
+                    },
+                },
+                "last_updated": "2025-09-27T08:00:00Z",
+            })
+        })
+    }
+    
+    // ===== API ドキュメンテーション =====
+    r.GET("/api/docs", func(c *gin.Context) {
+        c.JSON(200, gin.H{
+            "title": "Satellite Game Backend API",
+            "version": "v2.1.0",
+            "description": "Comprehensive satellite control, disaster monitoring, and ground control system",
+            "endpoints": gin.H{
+                "satellite_control": []string{
+                    "GET /api/v1/satellite/:id/orbit",
+                    "POST /api/v1/satellite/:id/maneuver", 
+                    "GET /api/v1/satellite/:id/status",
+                },
+                "satellite_video": []string{
+                    "GET /api/v1/satellite/available",
+                    "GET /api/v1/satellite/video/realtime",
+                    "GET /api/v1/satellite/video/history",
+                    "POST /api/v1/satellite/video/multi-view",
+                },
+                "disaster_monitoring": []string{
+                    "GET /api/v1/disaster/active",
+                    "GET /api/v1/disaster/:id",
+                    "GET /api/v1/disaster/:id/video",
+                    "POST /api/v1/disaster/:id/create-mission",
+                },
+                "ground_control": []string{
+                    "GET /api/v1/missions",
+                    "POST /api/v1/missions/create",
+                    "GET /api/v1/missions/:id",
+                    "POST /api/v1/missions/:id/message",
+                    "WS /api/v1/ws/missions/:id",
+                },
+                "administration": []string{
+                    "GET /admin/status",
+                    "GET /admin/satellites",
+                    "GET /admin/stats",
+                    "GET /admin/logs",
+                    "GET /admin/config",
+                },
+            },
+            "websocket_endpoints": []string{
+                "ws://localhost:8080/api/v1/ws/disaster",
+                "ws://localhost:8080/api/v1/ws/satellite/stream", 
+                "ws://localhost:8080/api/v1/ws/missions/:id",
+            },
+        })
+    })
+}
