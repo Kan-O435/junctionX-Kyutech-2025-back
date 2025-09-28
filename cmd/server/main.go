@@ -15,28 +15,13 @@ func main() {
     cfg := config.Load()
     log.Printf("📡 Environment: %s", cfg.Environment)
     
-    // Ginエンジン初期化
+    // Ginモード設定
     if cfg.Environment == "production" {
         gin.SetMode(gin.ReleaseMode)
     }
-    
-    r := gin.Default()
-    
-    // CORS設定（開発用）
-    r.Use(func(c *gin.Context) {
-        c.Header("Access-Control-Allow-Origin", "*")
-        c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        
-        if c.Request.Method == "OPTIONS" {
-            c.AbortWithStatus(204)
-            return
-        }
-        c.Next()
-    })
-    
-    // ルート設定
-    routes.SetupRoutes(r)
+
+    // ルート設定（エンジン生成をルータに委譲）
+    r := routes.SetupRoutes(cfg)
     
     // サーバー起動
     log.Printf("🌍 Server starting on http://0.0.0.0:%s", cfg.Port)
